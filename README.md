@@ -49,120 +49,120 @@ and start cowboy
 ```bash
 bash\> iex -S mix
 iex\> {:ok , pid }= Plug.Adapters.Cowboy.http(Phonix.Plug, %{}, port: 4001)
-  ```
-  goto http://localhost:4001
+```
+goto http://localhost:4001
 
-  as you can see in the iex shell you have the connection %Plug.Conn struct and its changes in the response-section
+as you can see in the iex shell you have the connection %Plug.Conn struct and its changes in the response-section
 
-  #### 4 create your own pipeline
-  For our own pipeline we have to use the Plug.Build. Now we can plug some other plugs into our pipeline or/and we can create easy our own plugs.
+#### 4 create your own pipeline
+For our own pipeline we have to use the Plug.Build. Now we can plug some other plugs into our pipeline or/and we can create easy our own plugs.
 
-  ```elixir
-  defmodule Phonix.Plug do
-    use Plug.Builder
+```elixir
+defmodule Phonix.Plug do
+  use Plug.Builder
 
-    plug Plug.Logger
-    plug :hello
+  plug Plug.Logger
+  plug :hello
 
-    @spec hello(Plug.Conn.t, Map.t) :: Plug.Conn.t
-    def hello(conn, _opts) do
-      conn
-      |> send_resp(200, "Hello World")
-    end
-  end
-  ```
-  #### 4.1 do some more magic with the request-path
-  We would like to show the string that is given after "/"
-
-
-  ```elixir
-  def hello(%Plug.Conn{request_path: "/"<>ext } = conn, _opts) do
+  @spec hello(Plug.Conn.t, Map.t) :: Plug.Conn.t
+  def hello(conn, _opts) do
     conn
-    |> send_resp(200, "my extension is: #{ext}")
+    |> send_resp(200, "Hello World")
   end
-  ```
-  ... nice but...
+end
+```
+#### 4.1 do some more magic with the request-path
+We would like to show the string that is given after "/"
 
-  #### question
-  How can we route now some different request-paths?
 
-  #### 5 Plug.Router
+```elixir
+def hello(%Plug.Conn{request_path: "/"<>ext } = conn, _opts) do
+  conn
+  |> send_resp(200, "my extension is: #{ext}")
+end
+```
+... nice but...
 
-  create a file lib/phonix_router.ex
+#### question
+How can we route now some different request-paths?
 
-  ```elixir
-  defmodule Phonix.Router do
-    use Plug.Router
+#### 5 Plug.Router
 
-    plug :match
-    plug :dispatch
-    plug Phonix.Plug
+create a file lib/phonix_router.ex
 
-    get "/" do
-      send_resp(conn, 200, "root-path and nothing to do here!")
-    end
+```elixir
+defmodule Phonix.Router do
+  use Plug.Router
 
-    get "/:name" do
-      conn
-    end
+  plug :match
+  plug :dispatch
+  plug Phonix.Plug
 
-    match _ do
-      send_resp(conn, 404, "oops")
-    end
-
+  get "/" do
+    send_resp(conn, 200, "root-path and nothing to do here!")
   end
-  ```
 
-  and change the entrypoint for cowboy
+  get "/:name" do
+    conn
+  end
 
-  ```bash
-  bash\> iex -S mix
-  iex\> {:ok , pid }= Plug.Adapters.Cowboy.http(Phonix.Router, %{}, port: 4001)
-    ```
-    #### 6 now add a plug-module that checks for specific extensions
+  match _ do
+    send_resp(conn, 404, "oops")
+  end
 
-    create a file lib/phonix_checker.ex
+end
+```
 
-    ```elixir
-    defmodule Phonix.Checker do
-      import Plug.Conn
+and change the entrypoint for cowboy
 
-      def init(opts), do: opts
+```bash
+bash\> iex -S mix
+iex\> {:ok , pid }= Plug.Adapters.Cowboy.http(Phonix.Router, %{}, port: 4001)
+```
+#### 6 now add a plug-module that checks for specific extensions
 
-      def call(%Plug.Conn{request_path: "/" <> ext } = conn, _opts) do
-        case Enum.member?(["User", "Users"], ext) do
-          true ->
-            conn
-            false ->
-              conn
-              |> send_resp(404, "SOMETHNG WENT WRONG")
-              |> halt
-            end
-          end
+create a file lib/phonix_checker.ex
 
-        end
-        ```
-        http://localhost:4001 shows the root-path text
+```elixir
+defmodule Phonix.Checker do
+  import Plug.Conn
 
-        http://localhost:4001/User shows the extension-message
+  def init(opts), do: opts
 
-        http://localhost:4001/user shows SOMETHING WENT WRONG
+  def call(%Plug.Conn{request_path: "/" <> ext } = conn, _opts) do
+    case Enum.member?(["User", "Users"], ext) do
+      true ->
+        conn
+      false ->
+          conn
+        |> send_resp(404, "SOMETHNG WENT WRONG")
+        |> halt
+    end
+  end
 
-        http://localhost:4001/foo/bar shows oops
+end
+```
+http://localhost:4001 shows the root-path text
+
+http://localhost:4001/User shows the extension-message
+
+http://localhost:4001/user shows SOMETHING WENT WRONG
+
+http://localhost:4001/foo/bar shows oops
 
 
-        #### 7 add cowboy to the supervision-tree
+#### 7 add cowboy to the supervision-tree
 
-        add the following line to lib/phonix/application.ex
+add the following line to lib/phonix/application.ex
 
-        ```elixir
-        children = [
-          Plug.Adapters.Cowboy.child_spec(:http, Phonix.Router, %{}, [port: 4001])
-        ]
-        ```
-        child_spec returns a corresponding adapter to supervise the Cowboy-plug-adapter.
+```elixir
+children = [
+  Plug.Adapters.Cowboy.child_spec(:http, Phonix.Router, %{}, [port: 4001])
+]
+```
+child_spec returns a corresponding adapter to supervise the Cowboy-plug-adapter.
 
-        Finaly start the app in the shell
-        ```bash
-        bash\> iex -S mix
-        ```
+Finaly start the app in the shell
+```bash
+bash\> iex -S mix
+```
