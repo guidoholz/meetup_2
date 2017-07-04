@@ -6,13 +6,14 @@
 
 #### 1 create phonix (with an initial supervisor)
 ``` bash
-mix new --sup phonix
+bash\> mix new --sup phonix
 ```
 
 #### 2 install cowboy and plug
 Add to mix.ex {:cowboy, "~> 1.1"},  {:plug, "~> 1.3"}
 ```bash
-mix deps.get / compile
+bash\> mix deps.get
+bash\> mix deps.compile
 ```
 
 #### 3 smallest plug-module
@@ -66,9 +67,9 @@ We would like to show the string that is given after "/"
 
 
 ```elixir
-def hello(%Plug.Conn{request_path: "/"<>name } = conn, _opts) do
+def hello(%Plug.Conn{request_path: "/"<>ext } = conn, _opts) do
   conn
-  |> send_resp(200, "my name is: #{name}")
+  |> send_resp(200, "my extension is: #{ext}")
 end
 ```
 ... nice but...
@@ -109,7 +110,7 @@ and change the entrypoint for cowboy
 bash\> iex -S mix
 iex\> {:ok , pid }= Plug.Adapters.Cowboy.http(Phonix.Router, %{}, port: 4001)
 ```
-#### 6 now add a plug-module that checks for specific names
+#### 6 now add a plug-module that checks for specific extensions
 
 create a file lib/phonix_checker.ex
 
@@ -119,8 +120,8 @@ defmodule Phonix.Checker do
 
   def init(opts), do: opts
 
-  def call(%Plug.Conn{request_path: "/" <> name } = conn, _opts) do
-    case Enum.member?(["Niklas", "Guido"], name) do
+  def call(%Plug.Conn{request_path: "/" <> ext } = conn, _opts) do
+    case Enum.member?(["User", "Users"], ext) do
       true ->
         conn
       false ->
@@ -133,11 +134,15 @@ defmodule Phonix.Checker do
 end
 ```
 http://localhost:4001 shows the root-path text
-http://localhost:4001/Guido shows the name-message
-http://localhost:4001/Gido shows SOMETHING WENT WRONG
+
+http://localhost:4001/User shows the extension-message
+
+http://localhost:4001/user shows SOMETHING WENT WRONG
+
 http://localhost:4001/foo/bar shows oops
 
-#### 7 add cowboy to the supervisor-tree
+
+#### 7 add cowboy to the supervision-tree
 
 add the following line to lib/phonix/application.ex
 
