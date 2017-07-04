@@ -1,0 +1,8 @@
+<div id="test">
+  <ul></ul>
+</div>
+
+<%= form_tag("/cookiejar", method: :post) %>
+  Flavor: <input type="text" name="flavor">
+  <button type="submit">bake a cookie</button>
+</form>
